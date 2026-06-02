@@ -10,6 +10,8 @@ import {
   LogOut,
   ChevronRight,
   Zap,
+  Tag,
+  CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/src/context/AuthContext";
 
@@ -24,7 +26,9 @@ export default function AdminLayout({
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/products", label: "Products", icon: Package },
+    { href: "/admin/categories", label: "Categories", icon: Tag },
     { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
+    { href: "/admin/payments", label: "Payments", icon: CreditCard },
     { href: "/admin/users", label: "Users", icon: Users },
   ];
 

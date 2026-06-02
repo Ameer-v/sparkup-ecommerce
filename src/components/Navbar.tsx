@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Menu, Moon, Search, ShoppingBag, Sun, X, Loader2,
+  Menu, Moon, Search, ShoppingBag, Sun, X, Loader2, Package,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "next-themes";
@@ -17,7 +17,6 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme();
   const { cart } = useCart();
 
-  // isAdmin is now a computed boolean from AuthContext – no more inline check
   const { user, isAdmin, isLoading, logout } = useAuth();
 
   return (
@@ -36,7 +35,12 @@ export default function Navbar() {
           <a href="/" className="hover:text-zinc-500 transition">Home</a>
           <a href="#" className="hover:text-zinc-500 transition">Shop</a>
           <a href="#" className="hover:text-zinc-500 transition">Categories</a>
-          <a href="#" className="hover:text-zinc-500 transition">About</a>
+          {user && (
+            <a href="/orders" className="hover:text-zinc-500 transition flex items-center gap-1.5">
+              <Package size={14} />
+              Pesanan
+            </a>
+          )}
         </nav>
 
         {/* RIGHT */}
@@ -44,14 +48,12 @@ export default function Navbar() {
 
           {/* Auth area */}
           {isLoading ? (
-            // Show spinner while we're verifying token / fetching profile
             <div className="hidden md:flex items-center">
               <Loader2 size={20} className="animate-spin text-zinc-400" />
             </div>
           ) : user ? (
             <div className="hidden md:flex items-center gap-3">
 
-              {/* Admin button — rendered only when role is confirmed */}
               {isAdmin && (
                 <a
                   href="/admin"
@@ -139,7 +141,7 @@ export default function Navbar() {
             <a href="/">Home</a>
             <a href="#">Shop</a>
             <a href="#">Categories</a>
-            <a href="#">About</a>
+            {user && <a href="/orders" className="flex items-center gap-2"><Package size={16} />Pesanan Saya</a>}
             {isAdmin && (
               <a href="/admin" className="text-purple-600 dark:text-purple-400">
                 Admin Panel
