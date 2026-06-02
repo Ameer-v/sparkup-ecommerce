@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 
 import Navbar from "../components/Navbar";
 import Categories from "../components/Categories";
-import Products from "../components/Products";
 import PromoBanner from "../components/PromoBanner";
 import Footer from "../components/Footer";
 
@@ -77,8 +76,6 @@ export default function Home() {
       </section>
 
       <Categories />
-
-      <Products />
 
       <PromoBanner />
 
