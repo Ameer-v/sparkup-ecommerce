@@ -17,6 +17,8 @@ type User = {
   id: string;
   name: string;
   email: string;
+  phone?: string;
+  address?: string;
   role?: Role;
 };
 
@@ -30,8 +32,6 @@ type AuthContextType = {
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-// ── helpers ────────────────────────────────────────────────────────────────
 
 function readStoredToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -57,52 +57,49 @@ function clearStorage() {
   localStorage.removeItem("sparkup-user");
 }
 
-// ── provider ───────────────────────────────────────────────────────────────
+function normaliseUser(raw: unknown): User | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+
+  // Unwrap common response envelopes: { user: {...} }, { data: { user: {...} } }, or flat
+  const data =
+    (r.user as Record<string, unknown>) ??
+    ((r.data as Record<string, unknown>)?.user as Record<string, unknown>) ??
+    (r.data as Record<string, unknown>) ??
+    r;
+
+  if (!data.id && !data.email) return null;
+
+  let role: Role | undefined;
+
+  if (data.role) {
+    if (typeof data.role === "string") {
+      role = { name: data.role };
+    } else if (typeof data.role === "object") {
+      const rv = data.role as Record<string, unknown>;
+      role = { name: String(rv.name ?? ""), id: rv.id as string | undefined };
+    }
+  }
+
+  if (!role && data.roleName) {
+    role = { name: String(data.roleName) };
+  }
+
+  return {
+    id: String(data.id ?? ""),
+    name: String(data.name ?? ""),
+    email: String(data.email ?? ""),
+    phone: data.phone ? String(data.phone) : undefined,
+    address: data.address ? String(data.address) : undefined,
+    role,
+  };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(readStoredUser);
   const [token, setToken] = useState<string | null>(readStoredToken);
   const [isLoading, setIsLoading] = useState<boolean>(!!readStoredToken());
 
-  // Normalise role: backend sometimes returns role as string, sometimes as
-  // { name: string }, sometimes nested under data.user.role.name
-  function normaliseUser(raw: unknown): User | null {
-    if (!raw || typeof raw !== "object") return null;
-    const r = raw as Record<string, unknown>;
-
-    // unwrap common response envelopes
-    const data =
-      (r.user as Record<string, unknown>) ??
-      (r.data as Record<string, unknown>) ??
-      r;
-
-    if (!data.id && !data.email) return null;
-
-    let role: Role | undefined;
-
-    if (data.role) {
-      if (typeof data.role === "string") {
-        role = { name: data.role };
-      } else if (typeof data.role === "object") {
-        const rv = data.role as Record<string, unknown>;
-        role = { name: String(rv.name ?? ""), id: rv.id as string | undefined };
-      }
-    }
-
-    // fallback: some backends send roleName at the top level
-    if (!role && data.roleName) {
-      role = { name: String(data.roleName) };
-    }
-
-    return {
-      id: String(data.id ?? ""),
-      name: String(data.name ?? ""),
-      email: String(data.email ?? ""),
-      role,
-    };
-  }
-
-  // Always refetch profile so we get the freshest role data
   const fetchProfile = useCallback(async (tkn: string): Promise<User | null> => {
     try {
       const res = await fetch("/api/users/profile", {
@@ -117,7 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // On mount: if we have a stored token, verify it and refresh the user object
   useEffect(() => {
     if (!token) {
       setIsLoading(false);
@@ -133,7 +129,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(freshUser);
         persistUser(freshUser);
       } else {
-        // Token expired / invalid – clear everything
         clearStorage();
         setUser(null);
         setToken(null);
@@ -141,24 +136,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    return () => { cancelled = true; };
-  }, []); // intentionally run once on mount only
-
-  // ── login ────────────────────────────────────────────────────────────────
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function login(nextToken: string, partialUser?: User) {
     localStorage.setItem("sparkup-token", nextToken);
     setToken(nextToken);
 
-    // Optimistically set whatever partial user we already have (e.g. from the
-    // login response body) so the UI isn't blank while we fetch the full profile
     if (partialUser) {
       const normalised = normaliseUser(partialUser) ?? partialUser;
       setUser(normalised);
       persistUser(normalised);
     }
 
-    // Always fetch the canonical profile – this guarantees role is populated
     setIsLoading(true);
     const freshUser = await fetchProfile(nextToken);
     setIsLoading(false);
@@ -168,8 +160,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       persistUser(freshUser);
     }
   }
-
-  // ── logout ───────────────────────────────────────────────────────────────
 
   function logout() {
     clearStorage();
@@ -186,8 +176,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
-// ── hook ────────────────────────────────────────────────────────────────────
 
 export function useAuth() {
   const ctx = useContext(AuthContext);

@@ -22,14 +22,13 @@ const allowedPathPatterns = [
   /^orders\/[^/]+$/,
   /^orders\/[^/]+\/status$/,
   /^payments\/[^/]+$/,
+  /^payments\/order\/[^/]+$/,
 ];
 
 function isAllowedPath(path: string) {
   return (
     allowedExactPaths.has(path) ||
-    allowedPathPatterns.some((pattern) =>
-      pattern.test(path)
-    )
+    allowedPathPatterns.some((pattern) => pattern.test(path))
   );
 }
 
@@ -48,19 +47,12 @@ async function handler(
 
   if (!isAllowedPath(backendPath)) {
     return Response.json(
-      {
-        message: "Endpoint not found",
-      },
-      {
-        status: 404,
-      }
+      { message: "Endpoint not found" },
+      { status: 404 }
     );
   }
 
-  return proxyBackendRequest(
-    request,
-    `/${backendPath}`
-  );
+  return proxyBackendRequest(request, `/${backendPath}`);
 }
 
 export {

@@ -65,7 +65,7 @@ export default function Home() {
           >
 
             <img
-              src="https://images.unsplash.com/photo-1517336714739-489689fd1ca8?q=80&w=1200&auto=format&fit=crop"
+              src="https://doran.id/wp-content/uploads/2024/08/image7-3.jpg"
               alt="Laptop"
               className="rounded-[40px] shadow-2xl"
             />

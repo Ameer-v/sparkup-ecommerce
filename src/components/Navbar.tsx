@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Menu, Moon, Search, ShoppingBag, Sun, X, Loader2, Package,
+  Menu, Moon, Search, ShoppingBag, Sun, X, Loader2, Package, UserCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "next-themes";
@@ -25,10 +25,10 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
 
         {/* LOGO */}
-        <div>
+        <a href="/">
           <h1 className="text-2xl font-bold tracking-tight">SparkUp</h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 -mt-1">Plug Into Tomorrow</p>
-        </div>
+        </a>
 
         {/* DESKTOP NAV */}
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-black dark:text-white">
@@ -46,14 +46,12 @@ export default function Navbar() {
         {/* RIGHT */}
         <div className="flex items-center gap-3">
 
-          {/* Auth area */}
           {isLoading ? (
             <div className="hidden md:flex items-center">
               <Loader2 size={20} className="animate-spin text-zinc-400" />
             </div>
           ) : user ? (
             <div className="hidden md:flex items-center gap-3">
-
               {isAdmin && (
                 <a
                   href="/admin"
@@ -63,9 +61,14 @@ export default function Navbar() {
                 </a>
               )}
 
-              <div className="px-5 h-12 rounded-full border border-zinc-300 dark:border-zinc-700 flex items-center text-sm">
+              {/* Profile link */}
+              <a
+                href="/profile"
+                className="px-4 h-12 rounded-full border border-zinc-300 dark:border-zinc-700 flex items-center gap-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition"
+              >
+                <UserCircle size={16} />
                 {user.name}
-              </div>
+              </a>
 
               <button
                 onClick={logout}
@@ -73,7 +76,6 @@ export default function Navbar() {
               >
                 Logout
               </button>
-
             </div>
           ) : (
             <>
@@ -87,7 +89,7 @@ export default function Navbar() {
                 href="/register"
                 className="hidden md:flex px-6 h-12 items-center rounded-full bg-black text-white text-sm hover:opacity-80 transition"
               >
-                Register
+                Daftar
               </a>
             </>
           )}
@@ -129,9 +131,7 @@ export default function Navbar() {
           >
             {open ? <X size={22} /> : <Menu size={22} />}
           </button>
-
         </div>
-
       </div>
 
       {/* MOBILE MENU */}
@@ -141,7 +141,18 @@ export default function Navbar() {
             <a href="/">Home</a>
             <a href="#">Shop</a>
             <a href="#">Categories</a>
-            {user && <a href="/orders" className="flex items-center gap-2"><Package size={16} />Pesanan Saya</a>}
+            {user && (
+              <>
+                <a href="/orders" className="flex items-center gap-2">
+                  <Package size={16} />
+                  Pesanan Saya
+                </a>
+                <a href="/profile" className="flex items-center gap-2">
+                  <UserCircle size={16} />
+                  Profil Saya
+                </a>
+              </>
+            )}
             {isAdmin && (
               <a href="/admin" className="text-purple-600 dark:text-purple-400">
                 Admin Panel
@@ -154,7 +165,7 @@ export default function Navbar() {
             ) : (
               <>
                 <a href="/login">Login</a>
-                <a href="/register">Register</a>
+                <a href="/register">Daftar</a>
               </>
             )}
           </nav>
@@ -163,7 +174,6 @@ export default function Navbar() {
 
       <SearchModal open={searchOpen} setOpen={setSearchOpen} />
       <CartSidebar open={cartOpen} setOpen={setCartOpen} />
-
     </header>
   );
 }

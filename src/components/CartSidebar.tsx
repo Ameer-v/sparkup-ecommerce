@@ -7,6 +7,9 @@ import {
   ArrowRight,
   ShoppingCart,
   Loader2,
+  Package,
+  Star,
+  Tag,
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
@@ -33,29 +36,65 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+type ProductDetail = {
+  id: string;
+  name: string;
+  description?: string;
+  price: string | number;
+  stock: number;
+  imageUrl?: string;
+  category?: { name: string };
+};
+
 export default function CartSidebar({ open, setOpen }: Props) {
   const router = useRouter();
   const { cart, removeFromCart, clearCart, syncCart } = useCart();
   const { user, token } = useAuth();
   const [checkingOut, setCheckingOut] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [productDetails, setProductDetails] = useState<Record<string, ProductDetail>>({});
+  const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
 
-  // Lock body scroll when open
+  // Lock body scroll
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  const total = cart.reduce((acc, item) => {
-    return acc + getPriceValue(item.price) * (item.quantity ?? 1);
-  }, 0);
+  // Escape key
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, setOpen]);
 
+  // Fetch product details
+  useEffect(() => {
+    if (!open) return;
+    cart.forEach((item) => {
+      const pid = item.productId ?? item.id;
+      if (pid && !productDetails[pid] && !loadingDetails.has(pid)) {
+        setLoadingDetails((prev) => new Set(prev).add(pid));
+        fetch(`/api/products/${pid}`)
+          .then((r) => r.ok ? r.json() : null)
+          .then((data) => {
+            if (data) setProductDetails((prev) => ({ ...prev, [pid]: data }));
+          })
+          .catch(() => {})
+          .finally(() => {
+            setLoadingDetails((prev) => {
+              const next = new Set(prev);
+              next.delete(pid);
+              return next;
+            });
+          });
+      }
+    });
+  }, [open, cart]);
+
+  const total = cart.reduce((acc, item) => acc + getPriceValue(item.price) * (item.quantity ?? 1), 0);
   const itemCount = cart.reduce((acc, item) => acc + (item.quantity ?? 1), 0);
 
   async function handleCheckout() {
@@ -65,7 +104,6 @@ export default function CartSidebar({ open, setOpen }: Props) {
       return;
     }
     if (cart.length === 0) return;
-
     setCheckingOut(true);
     try {
       const response = await fetch("/api/orders", {
@@ -75,20 +113,16 @@ export default function CartSidebar({ open, setOpen }: Props) {
           "Content-Type": "application/json",
         },
       });
-
       const data = await response.json().catch(() => null);
-
       if (!response.ok) {
         alert(data?.message || "Checkout gagal. Silakan coba lagi.");
         return;
       }
-
       await clearCart();
       await syncCart();
       setOpen(false);
       router.push("/orders");
-    } catch (error) {
-      console.error(error);
+    } catch {
       alert("Terjadi kesalahan. Silakan coba lagi.");
     } finally {
       setCheckingOut(false);
@@ -106,25 +140,24 @@ export default function CartSidebar({ open, setOpen }: Props) {
 
   return (
     <>
-      {/* OVERLAY – full screen portal-like, pointer-events controlled */}
+      {/* ── BACKDROP ── */}
       <div
         onClick={() => setOpen(false)}
         aria-hidden="true"
         style={{
           position: "fixed",
           inset: 0,
-          backgroundColor: "rgba(0,0,0,0.6)",
-          backdropFilter: "blur(4px)",
           zIndex: 9998,
-          transition: "opacity 0.3s, visibility 0.3s",
+          backgroundColor: "rgba(0,0,0,0.45)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
           opacity: open ? 1 : 0,
           visibility: open ? "visible" : "hidden",
-          // ensure it doesn't create stacking context issues
-          transform: "translateZ(0)",
+          transition: "opacity 0.3s ease, visibility 0.3s ease",
         }}
       />
 
-      {/* SIDEBAR */}
+      {/* ── SIDEBAR (slides in from RIGHT) ── */}
       <div
         role="dialog"
         aria-modal="true"
@@ -133,23 +166,22 @@ export default function CartSidebar({ open, setOpen }: Props) {
           position: "fixed",
           top: 0,
           right: 0,
-          height: "100%",
+          bottom: 0,
           width: "100%",
           maxWidth: "420px",
           zIndex: 9999,
           display: "flex",
           flexDirection: "column",
-          transition: "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
+          /* THE KEY: translate X based on open state */
           transform: open ? "translateX(0)" : "translateX(100%)",
-          // Force GPU layer to fix "bergeser ke kanan" bug
+          transition: "transform 0.38s cubic-bezier(0.32, 0.72, 0, 1)",
           willChange: "transform",
-          // Use inline style instead of Tailwind to avoid class conflicts
-          backgroundColor: "var(--sidebar-bg, white)",
-          boxShadow: "-20px 0 60px rgba(0,0,0,0.15)",
+          boxShadow: "-8px 0 40px rgba(0,0,0,0.15)",
         }}
         className="bg-white dark:bg-zinc-950"
       >
-        {/* ── HEADER ── */}
+
+        {/* ══ HEADER ══ */}
         <div className="shrink-0 flex items-center justify-between px-6 py-5 border-b border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-black dark:bg-white flex items-center justify-center">
@@ -162,90 +194,147 @@ export default function CartSidebar({ open, setOpen }: Props) {
               </p>
             </div>
           </div>
+
+          {/* ✕ Close / Back */}
           <button
             onClick={() => setOpen(false)}
-            className="w-10 h-10 rounded-2xl border border-zinc-200 dark:border-zinc-700 flex items-center justify-center hover:bg-zinc-50 dark:hover:bg-zinc-800 transition"
+            className="w-10 h-10 rounded-2xl border border-zinc-200 dark:border-zinc-700 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+            title="Tutup keranjang"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* ── ITEMS ── */}
+        {/* ══ BODY ══ */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center px-8 text-center">
-              <div className="w-24 h-24 rounded-full bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center mb-5">
-                <ShoppingCart size={36} className="text-zinc-300 dark:text-zinc-600" />
+            <div className="flex flex-col items-center justify-center h-full min-h-[320px] px-8 text-center">
+              <div className="w-20 h-20 rounded-full bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center mb-5">
+                <ShoppingCart size={32} className="text-zinc-300 dark:text-zinc-600" />
               </div>
               <h3 className="text-lg font-semibold mb-2">Keranjang kosong</h3>
-              <p className="text-sm text-zinc-500 mb-6 leading-relaxed">
-                Belum ada produk. Yuk mulai belanja dan temukan produk favoritmu!
+              <p className="text-sm text-zinc-500 mb-6 leading-relaxed max-w-xs">
+                Belum ada produk. Yuk mulai belanja!
               </p>
               <button
                 onClick={() => setOpen(false)}
-                className="px-6 py-3 rounded-full bg-black text-white dark:bg-white dark:text-black text-sm font-medium hover:opacity-80 transition"
+                className="px-8 py-3 rounded-full bg-black text-white dark:bg-white dark:text-black text-sm font-semibold hover:opacity-80 transition"
               >
                 Mulai Belanja
               </button>
             </div>
           ) : (
-            <div className="p-4 flex flex-col gap-3">
+            <div className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800">
               {cart.map((item, index) => {
+                const pid = item.productId ?? item.id;
+                const detail = productDetails[pid];
+                const isLoadingDetail = loadingDetails.has(pid);
                 const price = getPriceValue(item.price);
                 const qty = item.quantity ?? 1;
                 const subtotal = price * qty;
                 const isRemoving = removingId === item.id;
+                const stock = detail?.stock ?? null;
+                const category = detail?.category?.name;
+                const description = detail?.description;
+                const imageUrl = detail?.imageUrl || item.image || fallbackImage;
 
                 return (
                   <div
                     key={`${item.id}-${index}`}
-                    className={`group relative flex gap-4 bg-zinc-50 dark:bg-zinc-900 rounded-3xl p-4 transition-all duration-300 ${
-                      isRemoving ? "opacity-40 scale-95" : "opacity-100"
+                    className={`group flex gap-4 px-5 py-4 transition-all duration-300 ${
+                      isRemoving ? "opacity-30 scale-[0.97]" : "opacity-100"
                     }`}
                   >
-                    <div className="shrink-0 w-20 h-20 rounded-2xl overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700">
-                      <img
-                        src={item.image || fallbackImage}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = fallbackImage;
-                        }}
-                      />
+                    {/* Image */}
+                    <div className="shrink-0 relative">
+                      <div className="w-[72px] h-[72px] rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                        <img
+                          src={imageUrl}
+                          alt={item.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.src = fallbackImage; }}
+                        />
+                      </div>
+                      {qty > 1 && (
+                        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black dark:bg-white text-white dark:text-black text-[10px] font-bold flex items-center justify-center shadow">
+                          {qty}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex-1 min-w-0 flex flex-col justify-between">
-                      <div>
-                        <p className="text-sm font-semibold leading-snug line-clamp-2">
-                          {item.title}
-                        </p>
-                        <p className="text-xs text-zinc-400 mt-1">
-                          {formatCurrency(price)} / item
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-1">
-                          <span className="w-7 h-7 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-xs font-bold">
-                            {qty}
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      {/* Category */}
+                      {(category || isLoadingDetail) && (
+                        <div className="flex items-center gap-1 mb-1">
+                          {isLoadingDetail && !category
+                            ? <Loader2 size={10} className="animate-spin text-zinc-400" />
+                            : <Tag size={10} className="text-zinc-400 shrink-0" />
+                          }
+                          <span className="text-[10px] text-zinc-400 uppercase tracking-wider">
+                            {category ?? "Memuat..."}
                           </span>
-                          <span className="text-xs text-zinc-400">×</span>
                         </div>
-                        <p className="text-sm font-bold">{formatCurrency(subtotal)}</p>
+                      )}
+
+                      {/* Name */}
+                      <p className="text-sm font-semibold leading-snug line-clamp-2 pr-7">
+                        {item.title}
+                      </p>
+
+                      {/* Description */}
+                      {description && (
+                        <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                          {description}
+                        </p>
+                      )}
+
+                      {/* Price row */}
+                      <div className="flex items-center justify-between mt-2.5 flex-wrap gap-1">
+                        <div>
+                          {qty > 1 && (
+                            <p className="text-[11px] text-zinc-400 leading-none mb-0.5">
+                              {formatCurrency(price)} × {qty}
+                            </p>
+                          )}
+                          <p className="text-sm font-bold">{formatCurrency(subtotal)}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {/* Stock badge */}
+                          {stock !== null && (
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                              stock > 10
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                : stock > 0
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                : "bg-red-100 text-red-600"
+                            }`}>
+                              {stock > 0 ? `Stok ${stock}` : "Habis"}
+                            </span>
+                          )}
+                          {/* Stars */}
+                          <div className="flex items-center gap-0.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} size={10} fill="currentColor" className="text-amber-400" />
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
+                    {/* Remove button — always visible */}
                     <button
                       onClick={() => handleRemove(item.id)}
                       disabled={isRemoving}
-                      title="Hapus item"
-                      className="absolute top-3 right-3 w-7 h-7 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30 transition opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                      title="Hapus"
+                      className="absolute right-5 mt-0 w-7 h-7 rounded-lg border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30 transition disabled:opacity-50 self-start"
+                      style={{ position: "relative", flexShrink: 0, marginTop: "2px" }}
                     >
-                      {isRemoving ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        <Trash2 size={12} />
-                      )}
+                      {isRemoving
+                        ? <Loader2 size={13} className="animate-spin" />
+                        : <Trash2 size={13} />
+                      }
                     </button>
                   </div>
                 );
@@ -254,34 +343,38 @@ export default function CartSidebar({ open, setOpen }: Props) {
           )}
         </div>
 
-        {/* ── FOOTER ── */}
+        {/* ══ FOOTER ══ */}
         {cart.length > 0 && (
-          <div className="shrink-0 border-t border-zinc-100 dark:border-zinc-800 p-5 space-y-4 bg-white dark:bg-zinc-950">
-            <div className="bg-zinc-50 dark:bg-zinc-900 rounded-2xl p-4 space-y-2">
-              <div className="flex items-center justify-between text-sm text-zinc-500">
-                <span>{itemCount} item</span>
-                <span>{formatCurrency(total)}</span>
+          <div className="shrink-0 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-6 py-5 space-y-4">
+
+            {/* Summary */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-zinc-500">Subtotal ({itemCount} item)</span>
+                <span className="font-medium">{formatCurrency(total)}</span>
               </div>
-              <div className="flex items-center justify-between text-sm text-zinc-500">
-                <span>Ongkos kirim</span>
-                <span className="text-green-600 font-medium">Gratis</span>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-zinc-500">Ongkos kirim</span>
+                <span className="text-green-600 font-semibold">Gratis</span>
               </div>
-              <div className="pt-2 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
-                <span className="font-semibold">Total</span>
-                <span className="text-xl font-bold">{formatCurrency(total)}</span>
+              <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                <span className="font-bold text-base">Total</span>
+                <span className="font-bold text-xl">{formatCurrency(total)}</span>
               </div>
             </div>
 
+            {/* Login notice */}
             {!user && (
               <div className="text-center text-xs text-zinc-500 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl py-2.5 px-4">
                 Login diperlukan untuk checkout
               </div>
             )}
 
+            {/* Checkout button */}
             <button
               onClick={handleCheckout}
               disabled={checkingOut || cart.length === 0}
-              className="w-full rounded-2xl bg-black text-white dark:bg-white dark:text-black font-semibold flex items-center justify-center gap-2 hover:opacity-85 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="w-full h-13 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-semibold flex items-center justify-center gap-2 hover:opacity-85 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               style={{ height: "52px" }}
             >
               {checkingOut ? (
@@ -291,15 +384,17 @@ export default function CartSidebar({ open, setOpen }: Props) {
                 </>
               ) : (
                 <>
+                  <Package size={16} />
                   {user ? "Checkout Sekarang" : "Login untuk Checkout"}
-                  <ArrowRight size={16} />
+                  <ArrowRight size={15} />
                 </>
               )}
             </button>
 
+            {/* Clear cart */}
             <button
               onClick={async () => {
-                if (confirm("Kosongkan keranjang?")) {
+                if (confirm("Kosongkan semua isi keranjang?")) {
                   await clearCart();
                 }
               }}
