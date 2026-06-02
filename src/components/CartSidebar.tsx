@@ -4,15 +4,13 @@ import {
   ShoppingBag,
   Trash2,
   X,
-  Minus,
-  Plus,
   ArrowRight,
   ShoppingCart,
   Loader2,
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -41,6 +39,18 @@ export default function CartSidebar({ open, setOpen }: Props) {
   const { user, token } = useAuth();
   const [checkingOut, setCheckingOut] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // Lock body scroll when open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   const total = cart.reduce((acc, item) => {
     return acc + getPriceValue(item.price) * (item.quantity ?? 1);
@@ -96,20 +106,48 @@ export default function CartSidebar({ open, setOpen }: Props) {
 
   return (
     <>
-      {/* OVERLAY */}
+      {/* OVERLAY – full screen portal-like, pointer-events controlled */}
       <div
         onClick={() => setOpen(false)}
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-all duration-300 ${
-          open ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "rgba(0,0,0,0.6)",
+          backdropFilter: "blur(4px)",
+          zIndex: 9998,
+          transition: "opacity 0.3s, visibility 0.3s",
+          opacity: open ? 1 : 0,
+          visibility: open ? "visible" : "hidden",
+          // ensure it doesn't create stacking context issues
+          transform: "translateZ(0)",
+        }}
       />
 
       {/* SIDEBAR */}
-      <aside
-        className={`fixed top-0 right-0 h-full w-full sm:w-[420px] bg-white dark:bg-zinc-950 z-50 flex flex-col transition-transform duration-500 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-        style={{ boxShadow: "-20px 0 60px rgba(0,0,0,0.15)" }}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Keranjang belanja"
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          height: "100%",
+          width: "100%",
+          maxWidth: "420px",
+          zIndex: 9999,
+          display: "flex",
+          flexDirection: "column",
+          transition: "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
+          transform: open ? "translateX(0)" : "translateX(100%)",
+          // Force GPU layer to fix "bergeser ke kanan" bug
+          willChange: "transform",
+          // Use inline style instead of Tailwind to avoid class conflicts
+          backgroundColor: "var(--sidebar-bg, white)",
+          boxShadow: "-20px 0 60px rgba(0,0,0,0.15)",
+        }}
+        className="bg-white dark:bg-zinc-950"
       >
         {/* ── HEADER ── */}
         <div className="shrink-0 flex items-center justify-between px-6 py-5 border-b border-zinc-100 dark:border-zinc-800">
@@ -135,7 +173,6 @@ export default function CartSidebar({ open, setOpen }: Props) {
         {/* ── ITEMS ── */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           {cart.length === 0 ? (
-            /* Empty state */
             <div className="h-full flex flex-col items-center justify-center px-8 text-center">
               <div className="w-24 h-24 rounded-full bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center mb-5">
                 <ShoppingCart size={36} className="text-zinc-300 dark:text-zinc-600" />
@@ -152,7 +189,6 @@ export default function CartSidebar({ open, setOpen }: Props) {
               </button>
             </div>
           ) : (
-            /* Cart items */
             <div className="p-4 flex flex-col gap-3">
               {cart.map((item, index) => {
                 const price = getPriceValue(item.price);
@@ -167,7 +203,6 @@ export default function CartSidebar({ open, setOpen }: Props) {
                       isRemoving ? "opacity-40 scale-95" : "opacity-100"
                     }`}
                   >
-                    {/* Product image */}
                     <div className="shrink-0 w-20 h-20 rounded-2xl overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700">
                       <img
                         src={item.image || fallbackImage}
@@ -179,7 +214,6 @@ export default function CartSidebar({ open, setOpen }: Props) {
                       />
                     </div>
 
-                    {/* Info */}
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                       <div>
                         <p className="text-sm font-semibold leading-snug line-clamp-2">
@@ -191,20 +225,16 @@ export default function CartSidebar({ open, setOpen }: Props) {
                       </div>
 
                       <div className="flex items-center justify-between mt-2">
-                        {/* Qty badge */}
                         <div className="flex items-center gap-1">
                           <span className="w-7 h-7 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-xs font-bold">
                             {qty}
                           </span>
                           <span className="text-xs text-zinc-400">×</span>
                         </div>
-
-                        {/* Subtotal */}
                         <p className="text-sm font-bold">{formatCurrency(subtotal)}</p>
                       </div>
                     </div>
 
-                    {/* Remove button */}
                     <button
                       onClick={() => handleRemove(item.id)}
                       disabled={isRemoving}
@@ -227,7 +257,6 @@ export default function CartSidebar({ open, setOpen }: Props) {
         {/* ── FOOTER ── */}
         {cart.length > 0 && (
           <div className="shrink-0 border-t border-zinc-100 dark:border-zinc-800 p-5 space-y-4 bg-white dark:bg-zinc-950">
-            {/* Order summary */}
             <div className="bg-zinc-50 dark:bg-zinc-900 rounded-2xl p-4 space-y-2">
               <div className="flex items-center justify-between text-sm text-zinc-500">
                 <span>{itemCount} item</span>
@@ -243,18 +272,16 @@ export default function CartSidebar({ open, setOpen }: Props) {
               </div>
             </div>
 
-            {/* Login notice */}
             {!user && (
               <div className="text-center text-xs text-zinc-500 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl py-2.5 px-4">
                 Login diperlukan untuk checkout
               </div>
             )}
 
-            {/* Checkout button */}
             <button
               onClick={handleCheckout}
               disabled={checkingOut || cart.length === 0}
-              className="w-full h-13 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-semibold flex items-center justify-center gap-2 hover:opacity-85 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="w-full rounded-2xl bg-black text-white dark:bg-white dark:text-black font-semibold flex items-center justify-center gap-2 hover:opacity-85 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               style={{ height: "52px" }}
             >
               {checkingOut ? (
@@ -270,7 +297,6 @@ export default function CartSidebar({ open, setOpen }: Props) {
               )}
             </button>
 
-            {/* Clear cart */}
             <button
               onClick={async () => {
                 if (confirm("Kosongkan keranjang?")) {
@@ -283,7 +309,7 @@ export default function CartSidebar({ open, setOpen }: Props) {
             </button>
           </div>
         )}
-      </aside>
+      </div>
     </>
   );
 }
