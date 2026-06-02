@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { useAuth } from "../../../../context/AuthContext";
 
 type Category = {
   id: string;
@@ -11,6 +12,7 @@ type Category = {
 
 export default function CreateProductPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -23,7 +25,7 @@ export default function CreateProductPage() {
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const res = await fetch("https://be-ecommerce.up.railway.app/categories");
+        const res = await fetch("/api/categories");
         const data = await res.json();
         setCategories(Array.isArray(data) ? data : []);
       } catch (error) {
@@ -37,8 +39,7 @@ export default function CreateProductPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const token = localStorage.getItem("sparkup-token");
-      const res = await fetch("https://be-ecommerce.up.railway.app/products", {
+      const res = await fetch("/api/products", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

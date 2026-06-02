@@ -3,7 +3,7 @@
 import {
   Menu, Moon, Search, ShoppingBag, Sun, X, Loader2, Package, UserCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import CartSidebar from "./CartSidebar";
 import SearchModal from "./SearchModal";
@@ -11,6 +11,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 export default function Navbar() {
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -19,7 +20,13 @@ export default function Navbar() {
 
   const { user, isAdmin, isLoading, logout } = useAuth();
 
+  // Only render user-dependent UI after hydration to avoid SSR mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
+    <>
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur border-b border-zinc-100 dark:border-zinc-800">
 
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -35,7 +42,7 @@ export default function Navbar() {
           <a href="/" className="hover:text-zinc-500 transition">Home</a>
           <a href="#" className="hover:text-zinc-500 transition">Shop</a>
           <a href="#" className="hover:text-zinc-500 transition">Categories</a>
-          {user && (
+          {mounted && user && (
             <a href="/orders" className="hover:text-zinc-500 transition flex items-center gap-1.5">
               <Package size={14} />
               Pesanan
@@ -46,7 +53,10 @@ export default function Navbar() {
         {/* RIGHT */}
         <div className="flex items-center gap-3">
 
-          {isLoading ? (
+          {!mounted ? (
+            // Placeholder to avoid layout shift during hydration
+            <div className="hidden md:flex items-center w-8 h-8" />
+          ) : isLoading ? (
             <div className="hidden md:flex items-center">
               <Loader2 size={20} className="animate-spin text-zinc-400" />
             </div>
@@ -117,7 +127,7 @@ export default function Navbar() {
             className="hidden md:flex relative w-12 h-12 rounded-full bg-black text-white items-center justify-center hover:scale-105 transition"
           >
             <ShoppingBag size={20} />
-            {cart.length > 0 && (
+            {mounted && cart.length > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
                 {cart.length}
               </span>
@@ -141,7 +151,7 @@ export default function Navbar() {
             <a href="/">Home</a>
             <a href="#">Shop</a>
             <a href="#">Categories</a>
-            {user && (
+            {mounted && user && (
               <>
                 <a href="/orders" className="flex items-center gap-2">
                   <Package size={16} />
@@ -153,27 +163,30 @@ export default function Navbar() {
                 </a>
               </>
             )}
-            {isAdmin && (
+            {mounted && isAdmin && (
               <a href="/admin" className="text-purple-600 dark:text-purple-400">
                 Admin Panel
               </a>
             )}
-            {user ? (
-              <button onClick={logout} className="text-red-500 text-left">
-                Logout
-              </button>
-            ) : (
-              <>
-                <a href="/login">Login</a>
-                <a href="/register">Daftar</a>
-              </>
+            {mounted && (
+              user ? (
+                <button onClick={logout} className="text-red-500 text-left">
+                  Logout
+                </button>
+              ) : (
+                <>
+                  <a href="/login">Login</a>
+                  <a href="/register">Daftar</a>
+                </>
+              )
             )}
           </nav>
         </div>
       )}
-
-      <SearchModal open={searchOpen} setOpen={setSearchOpen} />
-      <CartSidebar open={cartOpen} setOpen={setCartOpen} />
     </header>
+
+    <SearchModal open={searchOpen} setOpen={setSearchOpen} />
+    <CartSidebar open={cartOpen} setOpen={setCartOpen} />
+  </>
   );
 }

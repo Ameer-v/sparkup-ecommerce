@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { useAuth } from "../../../../../context/AuthContext";
 
 type Category = {
   id: string;
@@ -16,6 +17,7 @@ export default function EditProductPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { token } = useAuth();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState("");
@@ -31,9 +33,7 @@ export default function EditProductPage({
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const res = await fetch(
-          `https://be-ecommerce.up.railway.app/products/${id}`
-        );
+        const res = await fetch(`/api/products/${id}`);
         const data = await res.json();
         setName(data.name ?? "");
         setDescription(data.description ?? "");
@@ -55,7 +55,7 @@ export default function EditProductPage({
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const res = await fetch("https://be-ecommerce.up.railway.app/categories");
+        const res = await fetch("/api/categories");
         const data = await res.json();
         setCategories(Array.isArray(data) ? data : []);
       } catch (error) {
@@ -69,25 +69,21 @@ export default function EditProductPage({
     e.preventDefault();
     setLoading(true);
     try {
-      const token = localStorage.getItem("sparkup-token");
-      const res = await fetch(
-        `https://be-ecommerce.up.railway.app/products/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name,
-            description,
-            price: Number(price),
-            stock: Number(stock),
-            imageUrl,
-            categoryId,
-          }),
-        }
-      );
+      const res = await fetch(`/api/products/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name,
+          description,
+          price: Number(price),
+          stock: Number(stock),
+          imageUrl,
+          categoryId,
+        }),
+      });
       const data = await res.json();
       if (!res.ok) {
         alert(data.message ?? "Failed to update product.");
