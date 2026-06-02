@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
@@ -9,8 +9,14 @@ type Category = {
   name: string;
 };
 
-export default function CreateProductPage() {
+export default function EditProductPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
   const router = useRouter();
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -19,7 +25,33 @@ export default function CreateProductPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fetchingProduct, setFetchingProduct] = useState(true);
 
+  /* Fetch product */
+  useEffect(() => {
+    async function fetchProduct() {
+      try {
+        const res = await fetch(
+          `https://be-ecommerce.up.railway.app/products/${id}`
+        );
+        const data = await res.json();
+        setName(data.name ?? "");
+        setDescription(data.description ?? "");
+        setPrice(String(data.price ?? ""));
+        setStock(String(data.stock ?? ""));
+        setImageUrl(data.imageUrl ?? "");
+        setCategoryId(data.category?.id ?? data.categoryId ?? "");
+      } catch (error) {
+        console.error(error);
+        alert("Failed to load product.");
+      } finally {
+        setFetchingProduct(false);
+      }
+    }
+    fetchProduct();
+  }, [id]);
+
+  /* Fetch categories */
   useEffect(() => {
     async function fetchCategories() {
       try {
@@ -38,27 +70,30 @@ export default function CreateProductPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("sparkup-token");
-      const res = await fetch("https://be-ecommerce.up.railway.app/products", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name,
-          description,
-          price: Number(price),
-          stock: Number(stock),
-          imageUrl,
-          categoryId,
-        }),
-      });
+      const res = await fetch(
+        `https://be-ecommerce.up.railway.app/products/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name,
+            description,
+            price: Number(price),
+            stock: Number(stock),
+            imageUrl,
+            categoryId,
+          }),
+        }
+      );
       const data = await res.json();
       if (!res.ok) {
-        alert(data.message ?? "Failed to create product.");
+        alert(data.message ?? "Failed to update product.");
         return;
       }
-      alert("Product created!");
+      alert("Product updated!");
       router.push("/admin/products");
     } catch (error) {
       console.error(error);
@@ -66,6 +101,14 @@ export default function CreateProductPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (fetchingProduct) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 size={32} className="animate-spin text-zinc-400" />
+      </div>
+    );
   }
 
   return (
@@ -80,8 +123,8 @@ export default function CreateProductPage() {
           <ArrowLeft size={16} />
           Back
         </button>
-        <h1 className="text-4xl font-bold">Add Product</h1>
-        <p className="text-zinc-500 mt-1">Fill in the details to create a new product.</p>
+        <h1 className="text-4xl font-bold">Edit Product</h1>
+        <p className="text-zinc-500 mt-1">Update product details below.</p>
       </div>
 
       {/* Form */}
@@ -97,35 +140,38 @@ export default function CreateProductPage() {
               src={imageUrl}
               alt="Preview"
               className="w-full h-full object-cover"
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
           </div>
         )}
 
+        {/* Name */}
         <div>
           <label className="block mb-2 font-medium text-sm">Product Name</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Samsung Galaxy S24 Ultra"
             className="w-full h-12 px-5 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-transparent outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 transition"
             required
           />
         </div>
 
+        {/* Description */}
         <div>
           <label className="block mb-2 font-medium text-sm">Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
-            placeholder="Describe the product..."
             className="w-full p-4 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-transparent outline-none resize-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 transition"
             required
           />
         </div>
 
+        {/* Price & Stock */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block mb-2 font-medium text-sm">Price (Rp)</label>
@@ -133,7 +179,6 @@ export default function CreateProductPage() {
               type="number"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="19999000"
               className="w-full h-12 px-5 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-transparent outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 transition"
               required
             />
@@ -144,39 +189,41 @@ export default function CreateProductPage() {
               type="number"
               value={stock}
               onChange={(e) => setStock(e.target.value)}
-              placeholder="50"
               className="w-full h-12 px-5 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-transparent outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 transition"
               required
             />
           </div>
         </div>
 
+        {/* Image URL */}
         <div>
           <label className="block mb-2 font-medium text-sm">Image URL</label>
           <input
             type="text"
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="https://images.unsplash.com/..."
             className="w-full h-12 px-5 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-transparent outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 transition"
           />
         </div>
 
+        {/* Category */}
         <div>
           <label className="block mb-2 font-medium text-sm">Category</label>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             className="w-full h-12 px-5 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 transition"
-            required
           >
             <option value="">Select category</option>
             {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
             ))}
           </select>
         </div>
 
+        {/* Buttons */}
         <div className="flex gap-3 mt-2">
           <button
             type="button"
@@ -191,7 +238,7 @@ export default function CreateProductPage() {
             className="flex-1 h-12 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-medium hover:opacity-80 transition disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
-            {loading ? "Creating..." : "Create Product"}
+            {loading ? "Saving..." : "Save Changes"}
           </button>
         </div>
 

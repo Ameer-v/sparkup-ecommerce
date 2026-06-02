@@ -1,85 +1,107 @@
 "use client";
 
 import Link from "next/link";
-
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Package,
   ShoppingCart,
   Users,
+  LogOut,
+  ChevronRight,
+  Zap,
 } from "lucide-react";
+import { useAuth } from "@/src/context/AuthContext";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
+
+  const navItems = [
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/products", label: "Products", icon: Package },
+    { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
+    { href: "/admin/users", label: "Users", icon: Users },
+  ];
 
   return (
     <main className="min-h-screen flex bg-zinc-100 dark:bg-zinc-950">
 
       {/* SIDEBAR */}
-      <aside className="w-[280px] bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 p-8">
+      <aside className="w-[280px] bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col">
 
-        <h1 className="text-3xl font-bold mb-12">
-          SparkUp
-        </h1>
+        {/* Logo */}
+        <div className="p-8 border-b border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-black dark:bg-white rounded-xl flex items-center justify-center">
+              <Zap size={20} className="text-white dark:text-black" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold leading-none">SparkUp</h1>
+              <p className="text-xs text-zinc-500 mt-0.5">Admin Panel</p>
+            </div>
+          </div>
+        </div>
 
-        <nav className="flex flex-col gap-3">
+        {/* Nav */}
+        <nav className="flex-1 p-6 flex flex-col gap-1">
+          {navItems.map(({ href, label, icon: Icon }) => {
+            const isActive =
+              href === "/admin"
+                ? pathname === "/admin"
+                : pathname.startsWith(href);
 
-          <Link
-            href="/admin"
-            className="flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-          >
-
-            <LayoutDashboard size={20} />
-
-            Dashboard
-
-          </Link>
-
-          <Link
-            href="/admin/products"
-            className="flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-          >
-
-            <Package size={20} />
-
-            Products
-
-          </Link>
-
-          <Link
-            href="#"
-            className="flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-          >
-
-            <ShoppingCart size={20} />
-
-            Orders
-
-          </Link>
-
-          <Link
-            href="#"
-            className="flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-          >
-
-            <Users size={20} />
-
-            Users
-
-          </Link>
-
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all group ${
+                  isActive
+                    ? "bg-black text-white dark:bg-white dark:text-black"
+                    : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                }`}
+              >
+                <Icon size={20} />
+                <span className="font-medium">{label}</span>
+                {isActive && (
+                  <ChevronRight size={16} className="ml-auto" />
+                )}
+              </Link>
+            );
+          })}
         </nav>
+
+        {/* User info + logout */}
+        <div className="p-6 border-t border-zinc-100 dark:border-zinc-800">
+          {user && (
+            <div className="flex items-center gap-3 mb-4 px-2">
+              <div className="w-9 h-9 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center font-bold text-sm">
+                {user.name?.[0]?.toUpperCase() ?? "A"}
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-sm truncate">{user.name}</p>
+                <p className="text-xs text-zinc-500 truncate">{user.email}</p>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition text-sm font-medium"
+          >
+            <LogOut size={18} />
+            Logout
+          </button>
+        </div>
 
       </aside>
 
       {/* CONTENT */}
-      <section className="flex-1 p-10">
-
+      <section className="flex-1 p-8 overflow-y-auto">
         {children}
-
       </section>
 
     </main>

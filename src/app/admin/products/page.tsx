@@ -1,232 +1,180 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
-
-import {
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Pencil, Trash2, Plus, RefreshCw } from "lucide-react";
+import { useAuth } from "../../../context/AuthContext";
 
 type Product = {
   id: string;
-
   name: string;
-
   price: string;
-
   stock: number;
-
   imageUrl: string;
+  category?: { name: string };
 };
 
-export default function AdminProductsPage() {
+const fallbackImage =
+  "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=400&auto=format&fit=crop";
 
-  const [products, setProducts] =
-    useState<Product[]>([]);
+export default function AdminProductsPage() {
+  const { token } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function fetchProducts() {
-
+    setLoading(true);
     try {
-
-      const res = await fetch(
-        "https://be-ecommerce.up.railway.app/products"
-      );
-
-      const data =
-        await res.json();
-
-      setProducts(data);
-
+      const res = await fetch("/api/products");
+      const data = await res.json();
+      setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
-
       console.error(error);
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-
     fetchProducts();
-
   }, []);
 
-  async function deleteProduct(
-    id: string
-  ) {
-
-    const confirmDelete =
-      confirm(
-        "Delete this product?"
-      );
-
+  async function deleteProduct(id: string) {
+    const confirmDelete = confirm("Yakin hapus produk ini?");
     if (!confirmDelete) return;
 
+    setDeletingId(id);
     try {
+      const res = await fetch(`/api/products/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      await fetch(
-        `https://be-ecommerce.up.railway.app/products/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.message || "Gagal menghapus produk");
+        return;
+      }
 
-      fetchProducts();
-
+      await fetchProducts();
     } catch (error) {
-
       console.error(error);
+      alert("Something went wrong");
+    } finally {
+      setDeletingId(null);
     }
   }
 
   return (
     <div>
-
       {/* HEADER */}
       <div className="flex items-center justify-between mb-10">
-
         <div>
-
-          <h1 className="text-5xl font-bold">
-            Products
-          </h1>
-
+          <h1 className="text-5xl font-bold tracking-tight">Products</h1>
           <p className="text-zinc-500 mt-3">
-            Manage your store products.
+            {loading ? "Loading..." : `${products.length} products total`}
           </p>
-
         </div>
-
-       <a
-  href="/admin/products/create"
-  className="px-6 py-4 rounded-2xl bg-black text-white"
->
-
-          Add Product
-
-        </a>
-
+        <div className="flex gap-3">
+          <button
+            onClick={fetchProducts}
+            className="w-12 h-12 rounded-2xl border border-zinc-300 dark:border-zinc-700 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+          >
+            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+          </button>
+          <a
+            href="/admin/products/create"
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-black text-white font-medium hover:opacity-80 transition"
+          >
+            <Plus size={18} />
+            Add Product
+          </a>
+        </div>
       </div>
 
       {/* TABLE */}
-      <div className="bg-white dark:bg-zinc-900 rounded-[32px] overflow-hidden border border-zinc-200 dark:border-zinc-800">
-
-        <table className="w-full">
-
-          <thead className="border-b border-zinc-200 dark:border-zinc-800">
-
-            <tr className="text-left">
-
-              <th className="p-6">
-                Product
-              </th>
-
-              <th className="p-6">
-                Price
-              </th>
-
-              <th className="p-6">
-                Stock
-              </th>
-
-              <th className="p-6">
-                Actions
-              </th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {products.map(
-              (product) => (
+      <div className="bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
+        {loading ? (
+          <div className="p-10 flex items-center justify-center">
+            <p className="text-zinc-500 animate-pulse">Loading products...</p>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="p-10 text-center text-zinc-500">
+            Belum ada produk.{" "}
+            <a href="/admin/products/create" className="underline">
+              Tambah sekarang
+            </a>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+              <tr className="text-left text-sm text-zinc-500">
+                <th className="px-6 py-4 font-medium">Product</th>
+                <th className="px-6 py-4 font-medium">Category</th>
+                <th className="px-6 py-4 font-medium">Price</th>
+                <th className="px-6 py-4 font-medium">Stock</th>
+                <th className="px-6 py-4 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((product) => (
                 <tr
                   key={product.id}
-                  className="border-b border-zinc-100 dark:border-zinc-800"
+                  className="border-b border-zinc-100 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition"
                 >
-
-                  <td className="p-6">
-
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-
                       <img
-                        src={
-                          product.imageUrl
-                        }
-                        alt={
-                          product.name
-                        }
-                        className="w-16 h-16 rounded-2xl object-cover"
+                        src={product.imageUrl?.startsWith("http") ? product.imageUrl : fallbackImage}
+                        alt={product.name}
+                        className="w-14 h-14 rounded-2xl object-cover bg-zinc-100"
+                        onError={(e) => { e.currentTarget.src = fallbackImage; }}
                       />
-
-                      <div>
-
-                        <h3 className="font-semibold">
-
-                          {product.name}
-
-                        </h3>
-
-                      </div>
-
+                      <p className="font-semibold">{product.name}</p>
                     </div>
-
                   </td>
-
-                  <td className="p-6">
-
-                    Rp{" "}
-                    {Number(
-                      product.price
-                    ).toLocaleString()}
-
+                  <td className="px-6 py-4 text-zinc-500 text-sm">
+                    {product.category?.name ?? "-"}
                   </td>
-
-                  <td className="p-6">
-
-                    {product.stock}
-
+                  <td className="px-6 py-4 font-medium">
+                    Rp {Number(product.price).toLocaleString("id-ID")}
                   </td>
-
-                  <td className="p-6">
-
-                    <div className="flex items-center gap-3">
-
-                      <button className="w-12 h-12 rounded-xl border border-zinc-300 dark:border-zinc-700 flex items-center justify-center">
-
-                        <Pencil size={18} />
-
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          deleteProduct(
-                            product.id
-                          )
-                        }
-                        className="w-12 h-12 rounded-xl bg-red-500 text-white flex items-center justify-center"
+                  <td className="px-6 py-4">
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        product.stock > 10
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          : product.stock > 0
+                          ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      }`}
+                    >
+                      {product.stock}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`/admin/products/edit/${product.id}`}
+                        className="w-10 h-10 rounded-xl border border-zinc-300 dark:border-zinc-700 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
                       >
-
-                        <Trash2 size={18} />
-
+                        <Pencil size={16} />
+                      </a>
+                      <button
+                        onClick={() => deleteProduct(product.id)}
+                        disabled={deletingId === product.id}
+                        className="w-10 h-10 rounded-xl bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition disabled:opacity-50"
+                      >
+                        <Trash2 size={16} />
                       </button>
-
                     </div>
-
                   </td>
-
                 </tr>
-              )
-            )}
-
-          </tbody>
-
-        </table>
-
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
-
     </div>
   );
 }
