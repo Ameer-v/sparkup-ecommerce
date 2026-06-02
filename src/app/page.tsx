@@ -43,13 +43,19 @@ export default function Home() {
 
             <div className="flex gap-4 mt-10">
 
-              <button className="bg-black text-white px-8 py-4 rounded-full hover:bg-zinc-800 transition">
+              <a
+                href="#shop"
+                className="bg-black text-white dark:bg-white dark:text-black px-8 py-4 rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition flex items-center justify-center font-medium text-sm md:text-base cursor-pointer"
+              >
                 Shop Now
-              </button>
+              </a>
 
-              <button className="border border-black px-8 py-4 rounded-full hover:bg-black hover:text-white transition">
+              <a
+                href="#categories"
+                className="border border-black dark:border-white px-8 py-4 rounded-full hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition flex items-center justify-center font-medium text-sm md:text-base cursor-pointer"
+              >
                 Explore
-              </button>
+              </a>
 
             </div>
 

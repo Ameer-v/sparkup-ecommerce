@@ -39,7 +39,9 @@ export default function AdminPaymentsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setPayments(Array.isArray(data) ? data : data.payments ?? []);
+      console.log("admin payments response:", data);
+      const arr = Array.isArray(data) ? data : Array.isArray(data?.payments) ? data.payments : Array.isArray(data?.data) ? data.data : [];
+      setPayments(arr);
     } catch (e) {
       console.error(e);
     } finally {

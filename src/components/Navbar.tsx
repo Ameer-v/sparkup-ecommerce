@@ -40,8 +40,8 @@ export default function Navbar() {
         {/* DESKTOP NAV */}
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-black dark:text-white">
           <a href="/" className="hover:text-zinc-500 transition">Home</a>
-          <a href="#" className="hover:text-zinc-500 transition">Shop</a>
-          <a href="#" className="hover:text-zinc-500 transition">Categories</a>
+          <a href="/#shop" className="hover:text-zinc-500 transition">Shop</a>
+          <a href="/#categories" className="hover:text-zinc-500 transition">Categories</a>
           {mounted && user && (
             <a href="/orders" className="hover:text-zinc-500 transition flex items-center gap-1.5">
               <Package size={14} />
@@ -149,8 +149,8 @@ export default function Navbar() {
         <div className="md:hidden border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950">
           <nav className="flex flex-col p-6 gap-5 text-lg font-medium">
             <a href="/">Home</a>
-            <a href="#">Shop</a>
-            <a href="#">Categories</a>
+            <a href="/#shop" onClick={() => setOpen(false)}>Shop</a>
+            <a href="/#categories" onClick={() => setOpen(false)}>Categories</a>
             {mounted && user && (
               <>
                 <a href="/orders" className="flex items-center gap-2">

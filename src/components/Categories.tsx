@@ -62,6 +62,7 @@ export default function Categories() {
   const [loadingCats, setLoadingCats] = useState(true);
   const [loadingProds, setLoadingProds] = useState(true);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [showAll, setShowAll] = useState(false);
 
   // Fetch categories
   useEffect(() => {
@@ -100,6 +101,12 @@ export default function Categories() {
       ? allProducts
       : allProducts.filter((p) => p.category?.id === activeCat);
 
+  const displayedProducts = showAll ? filteredProducts : filteredProducts.slice(0, 8);
+
+  useEffect(() => {
+    setShowAll(false);
+  }, [activeCat]);
+
   async function handleAddToCart(product: Product) {
     await addToCart({
       id: product.id,
@@ -121,7 +128,7 @@ export default function Categories() {
   const loading = loadingCats || loadingProds;
 
   return (
-    <section className="py-24 bg-white dark:bg-zinc-950 transition-colors duration-300">
+    <section id="categories" className="py-24 bg-white dark:bg-zinc-950 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-6">
 
         {/* ── Heading ── */}
@@ -134,10 +141,10 @@ export default function Categories() {
           </h2>
         </div>
 
-        {/* ── Hero category cards (max 3) ── */}
+        {/* ── Hero category cards ── */}
         {!loadingCats && categories.length > 0 && (
-          <div className="grid md:grid-cols-3 gap-8 mb-20">
-            {categories.slice(0, 3).map((cat, i) => (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-20">
+            {categories.map((cat, i) => (
               <motion.button
                 key={cat.id}
                 onClick={() => setActiveCat(cat.id === activeCat ? "all" : cat.id)}
@@ -145,7 +152,7 @@ export default function Categories() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: i * 0.1 }}
-                className={`group relative overflow-hidden rounded-[32px] h-[500px] cursor-pointer text-left focus:outline-none ring-offset-2 transition-all ${
+                className={`group relative overflow-hidden rounded-[32px] h-[400px] sm:h-[450px] md:h-[500px] w-full cursor-pointer text-left focus:outline-none ring-offset-2 transition-all ${
                   activeCat === cat.id
                     ? "ring-4 ring-black dark:ring-white scale-[0.98]"
                     : "hover:scale-[1.01]"
@@ -187,7 +194,7 @@ export default function Categories() {
         )}
 
         {/* ── Category pill filters ── */}
-        <div className="flex items-center gap-3 flex-wrap mb-10">
+        <div id="shop" className="flex items-center gap-3 flex-wrap mb-10">
           <button
             onClick={() => setActiveCat("all")}
             className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
@@ -258,7 +265,7 @@ export default function Categories() {
               transition={{ duration: 0.3 }}
               className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
             >
-              {filteredProducts.map((product, i) => {
+              {displayedProducts.map((product, i) => {
                 const isAdded = addedIds.has(product.id);
                 const inStock = product.stock > 0;
 
@@ -344,6 +351,24 @@ export default function Categories() {
               })}
             </motion.div>
           </AnimatePresence>
+        )}
+
+        {/* ── See More Button ── */}
+        {!loading && filteredProducts.length > 8 && (
+          <div className="flex justify-center mt-12">
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="px-8 py-3.5 rounded-full border border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black font-semibold text-sm transition-all duration-300 flex items-center gap-2 group cursor-pointer shadow-sm hover:shadow-md"
+            >
+              <span>{showAll ? "Lihat Lebih Sedikit" : "Lihat Lebih Banyak"}</span>
+              <motion.span
+                animate={{ y: showAll ? -2 : 2 }}
+                transition={{ repeat: Infinity, repeatType: "reverse", duration: 0.6 }}
+              >
+                {showAll ? "↑" : "↓"}
+              </motion.span>
+            </button>
+          </div>
         )}
       </div>
     </section>

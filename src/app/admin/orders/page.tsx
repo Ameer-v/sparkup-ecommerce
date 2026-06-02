@@ -8,7 +8,8 @@ type OrderItem = {
   id: string;
   quantity: number;
   price: string | number;
-  product?: { name: string; imageUrl?: string };
+  priceAtPurchase?: string | number;
+  product?: { name: string; imageUrl?: string; price?: string | number };
 };
 
 type Order = {
@@ -22,10 +23,11 @@ type Order = {
   orderItems?: OrderItem[];
 };
 
-const STATUS_OPTIONS = ["pending", "processing", "shipped", "delivered", "cancelled"];
+const STATUS_OPTIONS = ["pending", "paid", "shipped", "delivered", "cancelled"];
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400",
+  paid: "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400",
   processing: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400",
   shipped: "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400",
   delivered: "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400",
@@ -34,6 +36,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
   pending: <Clock size={12} />,
+  paid: <CheckCircle size={12} />,
   processing: <Package size={12} />,
   shipped: <Truck size={12} />,
   delivered: <CheckCircle size={12} />,
@@ -55,7 +58,9 @@ export default function AdminOrdersPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setOrders(Array.isArray(data) ? data : data.orders ?? []);
+      console.log("admin orders response:", data);
+      const arr = Array.isArray(data) ? data : Array.isArray(data?.orders) ? data.orders : Array.isArray(data?.data) ? data.data : [];
+      setOrders(arr);
     } catch (e) {
       console.error(e);
     } finally {
@@ -219,21 +224,24 @@ export default function AdminOrdersPage() {
                       <div>
                         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Items</p>
                         <div className="flex flex-col gap-2">
-                          {items.map((item, idx) => (
-                            <div key={item.id ?? idx} className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-3">
-                              {item.product?.imageUrl && (
-                                <img
-                                  src={item.product.imageUrl}
-                                  alt={item.product.name}
-                                  className="w-12 h-12 rounded-xl object-cover shrink-0"
-                                />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{item.product?.name ?? "Produk"}</p>
-                                <p className="text-xs text-zinc-500">Qty: {item.quantity} · Rp {Number(item.price).toLocaleString("id-ID")}</p>
+                          {items.map((item, idx) => {
+                            const priceVal = Number(item.priceAtPurchase ?? item.price ?? item.product?.price ?? 0);
+                            return (
+                              <div key={item.id ?? idx} className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-3">
+                                {item.product?.imageUrl && (
+                                  <img
+                                    src={item.product.imageUrl}
+                                    alt={item.product.name}
+                                    className="w-12 h-12 rounded-xl object-cover shrink-0"
+                                  />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{item.product?.name ?? "Produk"}</p>
+                                  <p className="text-xs text-zinc-500">Qty: {item.quantity} · Rp {priceVal.toLocaleString("id-ID")}</p>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}

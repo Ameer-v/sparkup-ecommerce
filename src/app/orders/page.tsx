@@ -21,7 +21,8 @@ type OrderItem = {
   id: string;
   quantity: number;
   price: string | number;
-  product?: { name: string; imageUrl?: string; description?: string };
+  priceAtPurchase?: string | number;
+  product?: { name: string; imageUrl?: string; description?: string; price?: string | number };
 };
 
 type Order = {
@@ -33,10 +34,12 @@ type Order = {
   items?: OrderItem[];
   orderItems?: OrderItem[];
   payment?: { status?: string; method?: string };
+  payments?: { status?: string; method?: string }[];
 };
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  paid: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   processing: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   shipped: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   delivered: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
@@ -45,6 +48,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
   pending: <Clock size={14} />,
+  paid: <CheckCircle size={14} />,
   processing: <Package size={14} />,
   shipped: <Truck size={14} />,
   delivered: <CheckCircle size={14} />,
@@ -73,9 +77,22 @@ export default function OrdersPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setOrders(Array.isArray(data) ? data : data.orders ?? []);
+      console.log("my-orders response:", data);
+
+      // Try multiple response envelope formats
+      const arr = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.orders)
+          ? data.orders
+          : Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data?.results)
+              ? data.results
+              : [];
+
+      setOrders(arr);
     } catch (e) {
-      console.error(e);
+      console.error("fetchOrders error:", e);
     } finally {
       setLoading(false);
     }
@@ -95,7 +112,7 @@ export default function OrdersPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ orderId, method: "cash" }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -162,7 +179,9 @@ export default function OrdersPage() {
                 const isExpanded = expandedId === order.id;
                 const statusKey = order.status?.toLowerCase() ?? "pending";
                 const isPending = statusKey === "pending";
-                const isPaid = order.payment?.status?.toLowerCase() === "paid" || order.payment?.status?.toLowerCase() === "success";
+                const paymentStatus = order.payment?.status?.toLowerCase() ?? order.payments?.[0]?.status?.toLowerCase();
+                const isPaid = paymentStatus === "paid" || paymentStatus === "success";
+                const paymentMethod = order.payment?.method ?? order.payments?.[0]?.method;
 
                 return (
                   <div key={order.id} className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 overflow-hidden shadow-sm">
@@ -190,7 +209,23 @@ export default function OrdersPage() {
                           {STATUS_ICONS[statusKey]}
                           {order.status}
                         </span>
+                        {isPaid && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            <CreditCard size={10} />
+                            Dibayar
+                          </span>
+                        )}
                         <p className="font-bold text-sm">Rp {getTotal(order).toLocaleString("id-ID")}</p>
+                        {isPending && !isPaid && (
+                          <a
+                            href={`/checkout/${order.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-black text-white dark:bg-white dark:text-black text-xs font-semibold hover:opacity-80 transition"
+                          >
+                            <CreditCard size={12} />
+                            Bayar
+                          </a>
+                        )}
                         {isExpanded ? <ChevronUp size={16} className="text-zinc-400" /> : <ChevronDown size={16} className="text-zinc-400" />}
                       </div>
                     </div>
@@ -203,25 +238,28 @@ export default function OrdersPage() {
                           <div>
                             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">Produk</p>
                             <div className="flex flex-col gap-2">
-                              {items.map((item, idx) => (
-                                <div key={item.id ?? idx} className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-3">
-                                  <img
-                                    src={item.product?.imageUrl ?? fallbackImage}
-                                    alt={item.product?.name ?? "Produk"}
-                                    className="w-14 h-14 rounded-xl object-cover shrink-0 bg-zinc-100"
-                                    onError={(e) => { e.currentTarget.src = fallbackImage; }}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold truncate">{item.product?.name ?? "Produk"}</p>
-                                    <p className="text-xs text-zinc-500 mt-0.5">
-                                      {item.quantity}x · Rp {Number(item.price).toLocaleString("id-ID")}
+                              {items.map((item, idx) => {
+                                const priceVal = Number(item.priceAtPurchase ?? item.price ?? item.product?.price ?? 0);
+                                return (
+                                  <div key={item.id ?? idx} className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-3">
+                                    <img
+                                      src={item.product?.imageUrl ?? fallbackImage}
+                                      alt={item.product?.name ?? "Produk"}
+                                      className="w-14 h-14 rounded-xl object-cover shrink-0 bg-zinc-100"
+                                      onError={(e) => { e.currentTarget.src = fallbackImage; }}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-semibold truncate">{item.product?.name ?? "Produk"}</p>
+                                      <p className="text-xs text-zinc-500 mt-0.5">
+                                        {item.quantity}x · Rp {priceVal.toLocaleString("id-ID")}
+                                      </p>
+                                    </div>
+                                    <p className="text-sm font-semibold shrink-0">
+                                      Rp {(priceVal * item.quantity).toLocaleString("id-ID")}
                                     </p>
                                   </div>
-                                  <p className="text-sm font-semibold shrink-0">
-                                    Rp {(Number(item.price) * item.quantity).toLocaleString("id-ID")}
-                                  </p>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -231,23 +269,20 @@ export default function OrdersPage() {
                           <div>
                             <p className="text-xs text-zinc-500">Total Pembayaran</p>
                             <p className="text-xl font-bold mt-0.5">Rp {getTotal(order).toLocaleString("id-ID")}</p>
-                            {order.payment?.status && (
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold mt-1 ${isPaid ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                                <CreditCard size={10} />
-                                {isPaid ? "Sudah Dibayar" : "Belum Dibayar"}
-                              </span>
-                            )}
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold mt-1 ${isPaid ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"}`}>
+                              <CreditCard size={10} />
+                              {isPaid ? `Dibayar via ${paymentMethod?.replace("_", " ") ?? "-"}` : "Belum Dibayar"}
+                            </span>
                           </div>
 
                           {isPending && !isPaid && (
-                            <button
-                              onClick={() => payOrder(order.id)}
-                              disabled={payingId === order.id}
-                              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black text-sm font-medium hover:opacity-80 transition disabled:opacity-50"
+                            <a
+                              href={`/checkout/${order.id}`}
+                              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black text-sm font-medium hover:opacity-80 transition"
                             >
                               <CreditCard size={15} />
-                              {payingId === order.id ? "Memproses..." : "Bayar Sekarang"}
-                            </button>
+                              Bayar Sekarang
+                            </a>
                           )}
                         </div>
                       </div>

@@ -315,6 +315,7 @@ export function CartProvider({
             productId:
               product.productId ??
               product.id,
+            quantity: product.quantity ?? 1,
           }),
         }
       );

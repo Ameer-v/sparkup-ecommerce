@@ -123,23 +123,62 @@ export default function CartSidebar({ open, setOpen }: Props) {
     if (cart.length === 0) return;
     setCheckingOut(true);
     try {
+      // First, ensure all cart items exist on the backend
+      for (const item of cart) {
+        const pid = item.productId ?? item.id;
+        if (pid) {
+          const cartRes = await fetch("/api/cart", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              productId: pid,
+              quantity: localQtys[item.id] ?? item.quantity ?? 1,
+            }),
+          });
+          if (!cartRes.ok) {
+            const errData = await cartRes.json().catch(() => null);
+            console.error("Cart sync failed for", pid, errData);
+          }
+        }
+      }
+
+      // Verify backend cart is not empty
+      const cartCheck = await fetch("/api/cart", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const cartData = await cartCheck.json().catch(() => null);
+      console.log("Backend cart before order:", cartData);
+
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          shippingAddress: user?.address || "-",
+        }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
+        console.error("Order creation failed:", data);
         alert(data?.message || "Checkout gagal. Silakan coba lagi.");
         return;
       }
+      const orderId = data?.id ?? data?.order?.id;
       await clearCart();
       await syncCart();
       setOpen(false);
-      router.push("/orders");
-    } catch {
+      if (orderId) {
+        router.push(`/checkout/${orderId}`);
+      } else {
+        router.push("/orders");
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
       alert("Terjadi kesalahan. Silakan coba lagi.");
     } finally {
       setCheckingOut(false);
