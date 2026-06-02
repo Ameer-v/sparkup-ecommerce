@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Eye, Pencil, ShoppingBag, Trash2, CheckCircle, TrendingUp } from "lucide-react";
+import { Eye, Pencil, ShoppingBag, Trash2, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import ProductModal from "./ProductModal";
 import { useAuth } from "../context/AuthContext";
@@ -82,17 +82,13 @@ export default function Products() {
     }, 1500);
   }
 
-  // "Best sellers" = produk dengan stock terbanyak terjual (simulasi: ambil 6 pertama)
-  // Jika ada endpoint khusus bestseller di masa depan, ganti fetch di sini
-  const bestSellers = products.slice(0, 6);
-
   if (loading) {
     return (
       <section className="py-24 bg-zinc-50 dark:bg-zinc-900">
         <div className="max-w-7xl mx-auto px-6">
           <div className="mb-14">
             <p className="uppercase tracking-[0.3em] text-sm text-zinc-500 mb-4">Featured Products</p>
-            <h2 className="text-5xl font-bold tracking-tight">Best Sellers</h2>
+            <h2 className="text-5xl font-bold tracking-tight">All Products</h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(6)].map((_, i) => (
@@ -119,12 +115,11 @@ export default function Products() {
           {/* HEADER */}
           <div className="flex items-center justify-between mb-14">
             <div>
-              <p className="uppercase tracking-[0.3em] text-sm text-zinc-500 dark:text-zinc-400 mb-4 flex items-center gap-2">
-                <TrendingUp size={14} />
+              <p className="uppercase tracking-[0.3em] text-sm text-zinc-500 dark:text-zinc-400 mb-4">
                 Featured Products
               </p>
               <h2 className="text-5xl font-bold tracking-tight text-black dark:text-white">
-                Best Sellers
+                All Products
               </h2>
             </div>
 
@@ -139,14 +134,14 @@ export default function Products() {
           </div>
 
           {/* GRID */}
-          {bestSellers.length === 0 ? (
+          {products.length === 0 ? (
             <div className="text-center py-20 text-zinc-400">
               <ShoppingBag size={48} className="mx-auto mb-4 opacity-30" />
               <p>Belum ada produk tersedia.</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {bestSellers.map((product, rank) => {
+              {products.map((product) => {
                 const isAdded = addedIds.has(product.id);
 
                 return (
@@ -168,13 +163,6 @@ export default function Products() {
                           onError={(e) => { e.currentTarget.src = fallbackImage; }}
                         />
                       </Link>
-
-                      {/* Rank badge – top 3 */}
-                      {rank < 3 && (
-                        <div className="absolute top-5 left-5 w-9 h-9 rounded-full bg-black text-white flex items-center justify-center text-sm font-bold shadow-lg">
-                          #{rank + 1}
-                        </div>
-                      )}
 
                       {/* Quick view */}
                       <button
