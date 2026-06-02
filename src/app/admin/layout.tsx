@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,6 +23,11 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -81,24 +87,26 @@ export default function AdminLayout({
 
         {/* User info + logout */}
         <div className="p-6 border-t border-zinc-100 dark:border-zinc-800">
-          {user && (
-            <div className="flex items-center gap-3 mb-4 px-2">
-              <div className="w-9 h-9 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center font-bold text-sm">
-                {user.name?.[0]?.toUpperCase() ?? "A"}
+          {mounted && user && (
+            <>
+              <div className="flex items-center gap-3 mb-4 px-2">
+                <div className="w-9 h-9 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center font-bold text-sm">
+                  {user.name?.[0]?.toUpperCase() ?? "A"}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{user.name}</p>
+                  <p className="text-xs text-zinc-500 truncate">{user.email}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-sm truncate">{user.name}</p>
-                <p className="text-xs text-zinc-500 truncate">{user.email}</p>
-              </div>
-            </div>
+              <button
+                onClick={logout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition text-sm font-medium"
+              >
+                <LogOut size={18} />
+                Logout
+              </button>
+            </>
           )}
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition text-sm font-medium"
-          >
-            <LogOut size={18} />
-            Logout
-          </button>
         </div>
 
       </aside>

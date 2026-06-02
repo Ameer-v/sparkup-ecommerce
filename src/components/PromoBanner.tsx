@@ -32,9 +32,12 @@ export default function PromoBanner() {
               gamers, and professionals.
             </p>
 
-            <button className="mt-10 bg-white text-black px-8 py-4 rounded-full font-medium hover:scale-105 transition">
+            <a
+              href="#shop"
+              className="inline-block mt-10 bg-white text-black px-8 py-4 rounded-full font-medium hover:scale-105 transition cursor-pointer"
+            >
               Shop Collection
-            </button>
+            </a>
 
           </div>
 
