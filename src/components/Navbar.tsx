@@ -124,7 +124,7 @@ export default function Navbar() {
           {/* CART */}
           <button
             onClick={() => setCartOpen(true)}
-            className="hidden md:flex relative w-12 h-12 rounded-full bg-black text-white items-center justify-center hover:scale-105 transition"
+            className="relative flex w-12 h-12 rounded-full bg-black text-white items-center justify-center hover:scale-105 transition cursor-pointer"
           >
             <ShoppingBag size={20} />
             {mounted && cart.length > 0 && (
@@ -151,6 +151,24 @@ export default function Navbar() {
             <a href="/">Home</a>
             <a href="/#shop" onClick={() => setOpen(false)}>Shop</a>
             <a href="/#categories" onClick={() => setOpen(false)}>Categories</a>
+            
+            {/* Mobile Cart Menu Item */}
+            <button
+              onClick={() => {
+                setOpen(false);
+                setCartOpen(true);
+              }}
+              className="flex items-center gap-2 text-left cursor-pointer text-black dark:text-white"
+            >
+              <ShoppingBag size={18} />
+              <span>Keranjang Belanja</span>
+              {mounted && cart.length > 0 && (
+                <span className="bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                  {cart.length}
+                </span>
+              )}
+            </button>
+
             {mounted && user && (
               <>
                 <a href="/orders" className="flex items-center gap-2">
